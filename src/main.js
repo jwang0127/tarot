@@ -1,0 +1,30 @@
+const majors = ['愚人','魔术师','女祭司','皇后','皇帝','教皇','恋人','战车','力量','隐者','命运之轮','正义','倒吊人','死神','节制','恶魔','高塔','星星','月亮','太阳','审判','世界']
+const suits = [['权杖','火'],['圣杯','水'],['宝剑','风'],['星币','土']]
+const minorRanks = ['王牌','二','三','四','五','六','七','八','九','十','侍者','骑士','王后','国王']
+const meanings = {
+  '愚人':'新的旅程、信任直觉、保持开放', '魔术师':'资源、行动力、把想法变成现实', '女祭司':'直觉、内在声音、暂时观察', '皇后':'滋养、创造力、丰盛与成长', '皇帝':'秩序、边界、承担责任', '教皇':'传统、学习、寻找可靠的指导', '恋人':'选择、连接、价值观的一致', '战车':'意志、推进、掌握方向', '力量':'耐心、柔韧、温和而坚定', '隐者':'独处、反思、寻找自己的答案', '命运之轮':'转机、周期、顺势而为', '正义':'平衡、事实、承担选择的结果', '倒吊人':'暂停、换个角度、放下控制', '死神':'结束、转化、为新阶段腾出空间', '节制':'调和、节奏、找到中间道路', '恶魔':'执着、诱惑、看见束缚', '高塔':'突然变化、旧结构松动、真实浮现', '星星':'希望、疗愈、重新相信未来', '月亮':'不确定、情绪、分辨恐惧与直觉', '太阳':'清晰、活力、坦诚的喜悦', '审判':'觉醒、复盘、回应内心召唤', '世界':'完成、整合、进入下一阶段'
+}
+const reversed = '需要放慢脚步，留意这股能量的失衡面，并把选择权拿回自己手中。'
+const cards = [...majors.map((name, i) => ({id:`major-${i}`, name, kind:'大阿卡纳', meaning:meanings[name]})), ...suits.flatMap(([suit, element]) => minorRanks.map((rank, i) => ({id:`${suit}-${i}`, name:`${suit}${rank}`, kind:`${suit} · ${element}`, meaning:`${suit}的${rank}：关注行动、感受、思考或现实资源的流动`})))]
+
+const state = { mode: 'single', question: '', drawn: [], revealed: 0, started: false, muted: true }
+const app = document.querySelector('#app')
+
+function tone(freq = 440, duration = .12) {
+  if (state.muted) return
+  const Ctx = window.AudioContext || window.webkitAudioContext
+  if (!Ctx) return
+  const ctx = new Ctx(), osc = ctx.createOscillator(), gain = ctx.createGain()
+  osc.frequency.value = freq; osc.type = 'sine'; gain.gain.setValueAtTime(.04, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + duration)
+  osc.connect(gain).connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + duration)
+}
+
+function shuffle(list) { const a = [...list]; for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a }
+function escapeHtml(value) { return value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])) }
+function shell(content) { app.innerHTML = `<main class="shell"><header><button class="brand" data-home>✦ 月隐 <span>Tarot</span></button><button class="sound" data-sound>${state.muted ? '声音已关闭' : '声音已开启'}</button></header>${content}<footer>仅用于娱乐与自我探索 · 把问题交给牌，把答案留给自己</footer></main>` }
+function home() { shell(`<section class="hero"><div class="eyebrow">A QUIET MOMENT WITH YOURSELF</div><h1>把问题交给牌<br><em>把答案留给自己</em></h1><p>一次安静、私密、可回看的塔罗自我探索。</p><div class="hero-card"><div class="orb">☾</div><div class="card-caption">THE MOON VEIL</div></div><div class="actions"><button class="primary" data-start>开始抽牌 <span>→</span></button><button class="secondary" data-daily>抽取今日一牌</button></div><div class="trust">无需注册 · 默认不公开问题 · 牌局只在你的浏览器中处理</div></section>`); bind() }
+function setup(mode='single') { state.mode=mode; state.started=true; shell(`<section class="panel"><div class="eyebrow">${mode==='single'?'ONE CARD':'THREE CARDS'}</div><h2>${mode==='single'?'给此刻一个方向':'让时间展开它的线索'}</h2><p class="muted">你可以先写下一个问题，也可以让牌从空白开始。</p><label>你想看清什么？ <span>可选</span><textarea id="question" maxlength="120" placeholder="例如：我最近最需要关注什么？"></textarea></label><div class="mode-row"><button class="choice ${mode==='single'?'selected':''}" data-mode="single">今日一牌</button><button class="choice ${mode==='three'?'selected':''}" data-mode="three">过去 · 现在 · 未来</button></div><button class="primary wide" data-draw>开始洗牌并抽取 <span>→</span></button><button class="link" data-home>返回首页</button></section>`); bind() }
+function reading() { const positions = state.mode==='single'?['今日指引']:['过去','现在','未来']; shell(`<section class="reading"><div class="reading-top"><div><div class="eyebrow">YOUR READING</div><h2>${state.question ? '给你的回应' : '此刻的牌'}</h2><p class="muted">${state.question ? `问题：${escapeHtml(state.question)}` : '让直觉先说话。'}</p></div><button class="secondary small" data-new>重新抽牌</button></div><div class="spread ${state.mode}">${state.drawn.map((card,i)=>`<article class="draw-card ${i<state.revealed?'revealed':''}" data-reveal="${i}"><div class="face"><div class="card-number">${String(i+1).padStart(2,'0')}</div><div class="glyph">${card.name.length>3?'✧':'☾'}</div><h3>${card.name}</h3><small>${card.kind}</small><div class="orientation">${card.orientation==='upright'?'正位':'逆位'}</div></div><div class="back"><div class="back-orb">✦</div><span>点击翻牌</span></div></article>`).join('')}</div>${state.revealed===state.drawn.length?`<div class="interpretation"><div class="eyebrow">A SMALL REFLECTION</div><h3>${state.mode==='single'?'这张牌想提醒你':'这三张牌的线索'}</h3>${state.drawn.map((c,i)=>`<div class="meaning"><strong>${positions[i]} · ${c.name}（${c.orientation==='upright'?'正位':'逆位'}）</strong><p>${c.orientation==='upright'?c.meaning:reversed}</p></div>`).join('')}<div class="advice"><strong>给现实的行动建议</strong><p>今天做一个小而具体的选择：写下你能控制的下一步，然后给它一个开始的时间。</p></div></div>`:'<p class="hint">依次翻开每一张牌，看看它带来的提醒。</p>'}</section>`); bind() }
+function bind() { document.querySelectorAll('[data-home]').forEach(b=>b.onclick=home); document.querySelector('[data-start]')?.addEventListener('click',()=>setup('three')); document.querySelector('[data-daily]')?.addEventListener('click',()=>setup('single')); document.querySelector('[data-sound]')?.addEventListener('click',e=>{state.muted=!state.muted;e.currentTarget.textContent=state.muted?'声音已关闭':'声音已开启';tone(660);}); document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>setup(b.dataset.mode)); document.querySelector('[data-draw]')?.addEventListener('click',()=>{state.question=document.querySelector('#question').value.trim();state.drawn=shuffle(cards).slice(0,state.mode==='single'?1:3).map(c=>({...c,orientation:Math.random()<.28?'reversed':'upright'}));state.revealed=0;tone(220,.2);reading()}); document.querySelectorAll('[data-reveal]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.reveal);if(i===state.revealed){state.revealed++;tone(440+i*100,.18);reading()}}); document.querySelector('[data-new]')?.addEventListener('click',()=>setup(state.mode)) }
+home()
